@@ -139,14 +139,19 @@ const ParticleText = ({
     };
 
     const render = now => {
+      // Skip all drawing while the tab is hidden — saves GPU/battery with no
+      // visible change since nothing is on screen anyway.
+      if (document.hidden) {
+        animationFrame = window.requestAnimationFrame(render);
+        return;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
-      if (glow && !reducedMotion) {
-        ctx.shadowBlur = particleSize * 3;
-        ctx.shadowColor = highlightColor;
-      } else {
-        ctx.shadowBlur = 0;
-      }
+      // Glow is handled once via a CSS drop-shadow on the canvas element instead
+      // of per-particle ctx.shadowBlur (which re-blurs thousands of fills every
+      // frame). Same glow look, a fraction of the cost.
+      ctx.shadowBlur = 0;
 
       pointer.smoothX += (pointer.x - pointer.smoothX) * 0.18;
       pointer.smoothY += (pointer.y - pointer.smoothY) * 0.18;
@@ -219,6 +224,11 @@ const ParticleText = ({
       canvas.height = Math.max(1, Math.floor(height * dpr));
       canvas.style.width = '100%';
       canvas.style.height = '100%';
+      // Composite the glow once on the GPU instead of blurring every particle.
+      canvas.style.filter =
+        glow && !reducedMotion
+          ? `drop-shadow(0 0 ${Math.max(2, particleSize * 2)}px ${highlightColor})`
+          : 'none';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const computed = window.getComputedStyle(container);

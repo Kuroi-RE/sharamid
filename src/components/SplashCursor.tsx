@@ -858,7 +858,10 @@ export default function SplashCursor({
     }
 
     function scaleByPixelRatio(input: number) {
-      const pixelRatio = window.devicePixelRatio || 1;
+      // Cap DPR at 2. On phones with devicePixelRatio 3 this cuts the fluid's
+      // fragment/fill work by ~2.25x with no perceptible change (the fluid is
+      // soft and blurry, so the downscale is invisible).
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       return Math.floor(input * pixelRatio);
     }
 
@@ -870,6 +873,12 @@ export default function SplashCursor({
 
     function updateFrame() {
       const dt = calcDeltaTime();
+      // Pause the fluid simulation while the tab is hidden (keeps the rAF loop
+      // alive but skips the expensive GPU passes).
+      if (document.hidden) {
+        requestAnimationFrame(updateFrame);
+        return;
+      }
       if (resizeCanvas()) initFramebuffers();
       updateColors(dt);
       applyInputs();
